@@ -1,0 +1,64 @@
+#!/bin/bash
+
+scriptdir="$(cd "$(dirname "$0")"; pwd)"
+
+. "$scriptdir/brmlib1"
+
+function usage {
+    local msg="$1"
+    usagestr="$(cat <<EOF
+
+Usage:
+
+  brma [-k <key>] {-f <file>|[-l] [-r] [<user>@]<host> <tapid>}
+
+  Establish an ssh ethernet tunnel between the local host
+  and <host> with tap interfaces on each end named tap<tapid>.
+  Optionally establish bridges on each end.
+  Alternatively, establish a group of tunnels defined in <file>.
+
+  Arguments:
+    <user>     = ssh user to connect to on <host>; defaults to 'root'
+    <host>     = IP address or hostname of the far end of the tunnel
+    <tapid>    = defines the interface name to establish at
+                 each end of the tunnel (tap<tapid>)
+    <file>     = define one or more tunnels in a file instead of
+                 with arguments where <file> will have the format:
+
+       [<user1>@]<host1>[:<key1>],[<user2>@]<host2>[:<key2>],<tapid>[,l][,r]
+
+           Note: use of a file requires you to specify both host endpoints
+                 (and then permits establishment of the tunnel from
+                 a machine that is not one of the endpoints).
+
+  Options:
+    -k <key>   = use ssh key file <key> for <user> on <host> instead
+                 of ssh default
+    -l         = option to establish bridge brma<tapid> on the local
+                 system and add the local tap inteface to it
+    -r         = option to establish bridge brma<tapid> on the remote
+                 system and add the local tap inteface to it
+
+  Notes:
+    - This will only work if <user> has the required permissions to
+      create the tunnel and bridge.
+    - The following sshd configuration options must be set on each
+      tunnel endpoint (assuming use of the root user):
+      PermitRootLogin {yes|without-password}
+      PermitTunnel yes
+    - tmux must be installed on each endpoint
+    - brctl must be installed on each endpoint (bridge-utils pkg on Ubuntu)
+    - tmux session name(s) will be established as brma<tapid>
+    - session and teardown information is stored in ~/.emutools1
+
+EOF
+)"
+    echo "$usagestr" 1>&2
+
+    if [[ ! -z $msg ]] ; then
+        echo -e "\n$msg\n\n" 1>&2
+    fi
+
+    exit 1
+}
+

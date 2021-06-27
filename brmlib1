@@ -1,0 +1,123 @@
+#!/bin/bash
+
+brmlib1Dir="$(cd "$(dirname -- "$0")"; pwd)"
+brmlib1File=brmlib1
+
+function setupRun {
+    local rdir="$1"
+    mkdir -p "$rdir"
+}
+
+tstamp=$(date +%Y%m%d%H%M%MS)
+rdir="$HOME/.emutools1/brmdata-$tstamp"
+setupRun "$rdir"
+
+function sshargs {
+    local user="$1"; shift
+    local host="$1"; shift
+    echo -n "$user@$host"
+}
+
+function myscp {
+    local user="$1"; shift
+    local host="$1"; shift
+    declare sshargs=( $(sshargs $user $host) )
+    declare cmdargs=( "${@}" ) 
+    scp "${sshargs[@]}" "${cmdargs[@]}"
+}
+
+function myssh {
+    local user="$1"; shift
+    local host="$1"; shift
+    declare sshargs=( $(sshargs $user $host) )
+    declare cmdargs=( "${@}" ) 
+    ssh "${sshargs[@]}" "${cmdargs[@]}"
+}
+
+function bkgndSsh {
+    local tname=$1; shift
+    local user="$1"; shift
+    local host="$1"; shift
+    declare sshargs=( $(sshargs $user $host) )
+    declare cmdargs=( "${@}" ) 
+    tmux new -s $tname -d ssh "${sshargs[@]}" "${cmdargs[@]}"
+}
+
+function bkgndTaskEnd {
+    local tname=$1; shift
+
+    tmux kill-session -t $tname
+}
+
+function getTunDir {
+    local tunid=$1
+    local tunDir="$rdir/$tunid"
+    mkdir -p "$tunDir"
+    echo -n "$tunDir"
+}
+
+function gettundir {
+    local tunid=$1
+    local tunDir="$rdir/$tunid"
+    mkdir -p "$tunDir"
+    echo -n "$tunDir"
+}
+function gettstopscr {
+    local tunid=$1
+    local tunDir="$(gettundir)"
+    local sscript="$tunDir/stopscript"
+    touch "$sscript"
+    chmod +x "$sscript"
+    echo -n "$sscript"
+}
+
+
+function tunnelStart {
+    local ruser=$1
+    local rhost=$2
+    local tunid=$3
+    local br1=$4
+    local br2=$5
+    local sscript="$(gettstopscr)"
+
+    local tname=brma$tunid
+
+    echo "
+#!/bin/bash
+
+. "$brmlib1Dir/$brmlib1File"
+
+bkgndTaskEnd $tname
+" > "$sscript"
+
+    tmux new -s $tname -d ssh -o Tunnel=ethernet -w $tunid:$tunid $ruser@$rhost  
+
+    sleep 2
+
+    local tunif=tap$tunid
+
+    ip link set dev $tunif up
+    myssh $ruser $rhost ip link set dev $tunif up
+
+    if [[ ! -z $br1 ]] ; then
+        brctl addbr $tname 
+        ip link set dev $tname up
+        brctl addif $tname $tunif
+        echo "brctl delbr $tname" >> "$sscript"
+    fi
+    if [[ ! -z $br2 ]] ; then
+        myssh $ruser $rhost brctl addbr $tname 
+        myssh $ruser $rhost ip link set dev $tname up
+        myssh $ruser $rhost brctl addif $tname  $tunif
+        echo "myssh $ruser $rhost brctl delbr $tname" >> "$sscript"
+    fi
+    echo "rm -rf \"$sscript\"" >> "$sscript"
+}
+
+function tunnelStop {
+    local tunid=$1
+    local tstopscr="$(gettstopscr $tunid)"
+    "$tstopscr"
+}
+
+

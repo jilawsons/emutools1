@@ -1,0 +1,38 @@
+#!/bin/bash
+
+scriptdir="$(cd "$(dirname "$0")"; pwd)"
+
+. "$scriptdir/brmlib1"
+
+function usage {
+    local msg="$1"
+    usagestr="$(cat <<EOF
+
+Usage:
+
+  brmd {-f <file>|<tapid>}
+
+  Tear down an ssh ethernet tunnel or group of tunnels setup by brma.
+
+  Arguments:
+    <tapid>    = defines the interface name to establish at
+                 each end of the tunnel (tap<tapid>)
+    <file>     = see brma Usage
+
+  Notes:
+    - this must be run on the same host as was brma and using the
+      same set of arguments (as in -f <file> OR <tapid>
+    - session and teardown information is stored in ~/.emutools1
+
+EOF
+)"
+    echo "$usagestr" 1>&2
+
+    if [[ ! -z $msg ]] ; then
+        echo -e "\n$msg\n\n" 1>&2
+    fi
+
+    exit 1
+}
+
+
