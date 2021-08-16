@@ -1,0 +1,36 @@
+#!/bin/bash
+
+startdir="$(pwd)"
+keydir=""
+scriptdir="$(sdir="$(dirname "$0")"; cd "$sdir"; pwd)"
+scriptname="$(basename "$0")"
+
+ktype=rsa
+bits=2048
+
+
+function usage {
+    local msg="$1"
+    local USAGE="$(cat <<EOF
+  $scriptname [<keyfile>]
+     Create an ssh key pair
+EOF
+)"
+    echo "$USAGE"
+    if [[ ! -z $msg ]] ; then
+        echo
+        echo "ERROR: $msg"
+        echo
+    fi
+    exit 1
+}
+keyfile="$1"
+
+if [[ -z $keyfile ]] ; then
+    keyfile="$startdir/ssh-$ktype-key-$bits-bits-$(date +%Y%m%d%H%M%S)"
+fi
+
+rm -f "$keyfile"*
+
+ssh-keygen -q -b $bits -t $ktype -f "$keyfile" -N "" 
+

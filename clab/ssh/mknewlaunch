@@ -1,0 +1,50 @@
+#!/bin/bash
+
+startdir="$(pwd)"
+keydir=""
+scriptdir="$(sdir="$(dirname "$0")"; cd "$sdir"; pwd)"
+
+keydir="$scriptdir"
+lt="$scriptdir/launch.py.template"
+lf="$scriptdir/launch.py"
+keyfile=clab-csr-ssh-rsa-key
+keypath="$keydir/$keyfile"
+keyscr="$scriptdir/genkeys"
+
+$keyscr "$keypath"
+
+keydata="$(fold -b -w 72 "$keypath.pub")"
+
+cnt=1
+while read line ; do 
+    if [[ $cnt -eq 1 ]] ; then
+        kl1=$(echo $line | cut -f2 -d' ')
+    elif [[ $cnt -eq 6 ]] ; then
+        kl6=$(echo $line | cut -f1 -d' ')
+    else
+        eval "kl$cnt=$line"
+    fi
+    cnt=$(( $cnt + 1 ))
+done <<< "$keydata"
+
+keylines="$(cat <<EOF
+        self.wait_write("$kl1")
+        self.wait_write("$kl2")
+        self.wait_write("$kl3")
+        self.wait_write("$kl4")
+        self.wait_write("$kl5")
+        self.wait_write("$kl6")
+EOF
+)"
+
+echo -n "" > "$lf"
+
+while IFS= read -r line ; do 
+    if [[ $line == "KEYDATA" ]] ; then
+         echo "$keylines" >> "$lf"
+    else
+          echo "$line" >> "$lf"
+    fi
+done < "$lt"
+
+chmod +x "$lf"

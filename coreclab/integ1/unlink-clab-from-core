@@ -1,0 +1,89 @@
+#!/bin/bash
+
+scriptdir="$(sdir="$(dirname "$0")"; cd "$sdir"; pwd)"
+
+logfile=/tmp/link-clab-to-core.log
+
+# get core session info
+#DEV
+pydir="$(ls -td /tmp/pycore*)"
+#DEV
+coreid=3node1
+
+# get node info
+#DEV
+node=n2
+#DEV
+nid="$pydir/$node"
+nld="$(vcmd -c"$pydir/$node" ip link show)"
+#DEV
+psd="$(ps -ef | grep vnoded | grep $node)"
+
+npid="$(echo "$psd" | awk '{print $2}')"
+
+# define namespace 
+nsrdir=/run/netns
+netnmsp=$coreid-$node
+nsfile=$nsrdir/$netnmsp
+
+# remove core node extra bridges and interfaces 
+nintfs="$(vcmd -c "$nid" "$scriptdir"/setup-core-link-1)"
+
+for nintf in $nintfs ; do 
+    nif=$node-$nintf
+    cnif=$nif-core
+    hnif=$nif-host
+    if [[ ! $nintf =~ ^eth[[:digit:]]+ ]] ; then
+        continue
+    fi
+    if ip link show dev $hnif > /dev/null 2>&1 ; then 
+        echo "$(date +%Y%m%d-%H:%M:%S): Running:   sudo ip link set dev $hnif down" | tee -a $logfile
+        sudo ip link set dev $hnif down 2>&1 | tee -a $logfile
+        echo "$(date +%Y%m%d-%H:%M:%S): Running:   sudo ip netns exec $netnmsp ip link set dev $cnif down" | tee -a $logfile
+        sudo ip netns exec $netnmsp ip link set dev $cnif down 2>&1 | tee -a $logfile
+        echo "$(date +%Y%m%d-%H:%M:%S): Running:   sudo ip netns exec $netnmsp ip link del dev $cnif" | tee -a $logfile
+        sudo ip netns exec $netnmsp ip link del dev $cnif 2>&1 | tee -a $logfile
+        echo "$(date +%Y%m%d-%H:%M:%S): Running:   sudo ip link del dev $hnif" | tee -a $logfile
+        sudo ip link del dev $hnif 2>&1 | tee -a $logfile
+
+    fi
+done 
+
+# remove namespace
+if [[ -f $nsfile ]] ; then
+    echo "$(date +%Y%m%d-%H:%M:%S): Executing: Unmounting anonymous namespace for node $node with name $netnmsp" | tee -a $logfile
+    sudo umount $nsfile 2>&1 | tee -a $logfile
+    sudo rm -f $nsfile 2>&1 | tee -a $logfile
+fi
+
+# create containerlab configuration
+clid=$coreid-$node
+clcfg="$scriptdir/$clid.clab.yml"
+
+# stop containerlab node
+echo "$(date +%Y%m%d-%H:%M:%S): Running:   sudo containerlab destroy --topo '$clcfg'" | tee -a $logfile
+if ! sudo containerlab destroy --topo "$clcfg" 2>&1 | tee -a $logfile ; then
+    echo "Failed to stop the CSR container." | tee -a $logfile
+fi
+
+# remove final bridges
+# DEV
+# change all names to include core model in use
+for nintf in $nintfs ; do 
+    if [[ ! $nintf =~ ^eth[[:digit:]]+ ]] ; then
+        continue
+    fi
+    nif=$node-$nintf
+    clbr=$nif-br-clab
+    if ip link show dev $clbr > /dev/null 2>&1 ; then 
+        echo "$(date +%Y%m%d-%H:%M:%S): Running:   sudo ip link set dev $clbr down" | tee -a $logfile
+        sudo ip link set dev $clbr down 2>&1 | tee -a $logfile
+        echo "$(date +%Y%m%d-%H:%M:%S): Running:   sudo brctl delbr $clbr" | tee -a $logfile
+        sudo brctl delbr $clbr 2>&1 | tee -a $logfile
+    fi
+done 
+
+# verify containerlab node up
+
+# load containerlab node configuration
+

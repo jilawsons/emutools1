@@ -1,0 +1,7 @@
+#!/bin/bash
+
+scriptdir="$(sdir="$(dirname "$0")"; cd "$sdir"; pwd)"
+
+"$scriptdir/mknewlaunch"
+"$scriptdir/buildit" "$scriptdir" clab/vr-csr-ssh:17.03.02
+

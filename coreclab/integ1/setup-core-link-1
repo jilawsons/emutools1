@@ -1,0 +1,28 @@
+#!/bin/bash
+
+intfs="$(ip link show 2>&1 | grep -E '\seth' | grep ^[[:digit:]] | sed -e 's|.* \(eth.*\)@.*|\1|' | xargs)"
+hn="$(hostname)"
+
+function addBridge {
+    local brname="$1"
+    local intf="$2"
+    if ! ip link show dev $brname > /dev/null 2>&1 ; then 
+        echo "$(date +%Y%m%d-%H:%M:%S): Running:   brctl addbr $brname" | tee -a /tmp/link-clab-to-core.log
+        brctl addbr $brname 2>&1 | tee -a /tmp/link-clab-to-core.log
+        echo "$(date +%Y%m%d-%H:%M:%S): Running:   ip link set dev $brname up" | tee -a /tmp/link-clab-to-core.log
+        ip link set dev $brname up 2>&1 | tee -a /tmp/link-clab-to-core.log
+        echo "$(date +%Y%m%d-%H:%M:%S): Running:   brctl addif $brname $intf" | tee -a /tmp/link-clab-to-core.log
+        brctl addif $brname $intf 2>&1 | tee -a /tmp/link-clab-to-core.log
+    fi
+}
+
+for intf in $intfs ; do 
+    if [[ ! $intf =~ ^eth[[:digit:]]+ ]] ; then
+        continue
+    fi
+    brname="$hn-$intf-br"
+    addBridge $brname $intf > /dev/null 2>&1
+done
+
+echo $intfs
+

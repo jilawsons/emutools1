@@ -1,0 +1,24 @@
+#!/bin/bash
+
+intfs="$1"
+hn="$(hostname)"
+
+function addNewIfToBridge {
+    local brname="$1"
+    local cintf="$2"
+    if ip link show dev $brname > /dev/null 2>&1 ; then 
+        echo "$(date +%Y%m%d-%H:%M:%S): Running:   ip link set dev $cintf up" | tee -a /tmp/link-clab-to-core.log
+        ip link set dev $cintf up  2>&1 | tee -a /tmp/link-clab-to-core.log
+        echo "$(date +%Y%m%d-%H:%M:%S): Running:   brctl addif $brname $cintf" | tee -a /tmp/link-clab-to-core.log
+        brctl addif $brname $cintf 2>&1 | tee -a /tmp/link-clab-to-core.log
+    fi
+}
+
+for intf in $intfs ; do 
+    if [[ ! $intf =~ ^eth[[:digit:]]+ ]] ; then
+        continue
+    fi
+    brname="$hn-$intf-br"
+    cintf="$hn-$intf-core"
+    addNewIfToBridge $brname $cintf
+done

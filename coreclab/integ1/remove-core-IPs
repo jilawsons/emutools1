@@ -1,0 +1,23 @@
+#!/bin/bash
+
+intfs="$1"
+hn="$(hostname)"
+
+function removeIPs {
+    local intf="$1"
+    local ip='dummy'
+    while [[ ! -z $ip ]] ; do
+        ip="$(ip addr show dev $intf | grep -E '^\s+inet\s' | head -1 | awk '{print $2}')"
+        if [[ ! -z $ip ]] ; then
+            echo "$(date +%Y%m%d-%H:%M:%S): Running:  ip addr del $ip dev $intf" | tee -a /tmp/link-clab-to-core.log
+            ip addr del $ip dev $intf  2>&1 | tee -a /tmp/link-clab-to-core.log
+        fi
+    done 
+}
+
+for intf in $intfs ; do 
+    if [[ ! $intf =~ ^eth[[:digit:]]+ ]] ; then
+        continue
+    fi
+    removeIPs $intf > /dev/null 2>&1
+done

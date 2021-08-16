@@ -1,0 +1,12 @@
+name: 3node1-n2
+
+topology:
+  nodes:
+    n2:
+      kind: vr-csr
+      image: clab/vr-csr-ssh:17.03.02
+
+  links:
+
+    - endpoints: ["n2:eth1", "host:n2-eth0-clab"]
+    - endpoints: ["n2:eth2", "host:n2-eth1-clab"]

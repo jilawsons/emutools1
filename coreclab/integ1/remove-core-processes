@@ -1,0 +1,14 @@
+#!/bin/bash
+
+pstodelPattern='(bin/ospf|bin/zebra|bin/bgp)'
+
+
+pstodel='dummy'
+while [[ ! -z $pstodel ]] ; do
+    pstodel="$(ps -ef 2>&1 | grep -E $pstodelPattern | grep -v grep | head -1 | awk '{print $2}')"
+    if [[ ! -z $pstodel ]] ; then
+        echo "$(date +%Y%m%d-%H:%M:%S): Running:  kill $pstodel" | tee -a /tmp/link-clab-to-core.log
+        kill $pstodel 2>&1 | tee -a /tmp/link-clab-to-core.log
+    fi
+done 
+

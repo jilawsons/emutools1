@@ -1,0 +1,16 @@
+#!/bin/bash
+
+scriptdir="$(sdir="$(dirname "$0")"; cd "$sdir"; pwd)"
+
+ddir="$1"
+tag="$2"
+
+if [[ -z $ddir ]] ; then
+    ddir="$scriptdir"
+fi
+
+if [[ -z $tag ]] ; then
+    tag="$(cd "$ddir"; basename "$(pwd)")"
+fi
+
+docker build -t "$tag" "$ddir"
